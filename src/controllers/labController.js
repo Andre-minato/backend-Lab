@@ -1,4 +1,3 @@
-import { where } from "sequelize";
 import LabRepository from "../models/labs.js";
 
 class LabController{

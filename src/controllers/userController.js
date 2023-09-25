@@ -1,12 +1,23 @@
 import UserRepository from "../models/users.js";
-import bcrypt from "bcrypt"
+import bcrypt from "bcrypt";
 import UserTypeRepository from "../models/user_types.js";
+import jwt from "jsonwebtoken"
+import { SECRET_KEY } from "../middlewares/auth.js";
 
 
 class UserController{
 
     async create(req, res){
         const dados = req.body;
+        const verifyUsers = await UserRepository.findAll();
+        const verifyEmail = verifyUsers.find((verifyEmail) => verifyEmail.email === dados.email);
+        if(verifyEmail){
+            return res.status(404).json({mensagem: "Já existe cadastro para email informado!"})
+        }
+        const verifyCpfCnpj = verifyUsers.find((verifyCpfCnpj) => verifyCpfCnpj.cpf_cnpj === dados.cpf_cnpj);
+        if(verifyCpfCnpj){
+            return res.status(404).json({mensagem: "Já existe cadastro para cpf/cnpj informado!"})
+        } 
         const userTypeId = dados['user_type_id'];
         const userType = await type(userTypeId);
         const passwordEcript = await bcrypt.hash(dados.password, 10);
@@ -81,6 +92,33 @@ class UserController{
             res.status(400).json({mensagem: "Não foi possível ativar usuário!"});
         }
     }
+
+    async login(req, res){
+        const user = await UserRepository.findOne({
+            attributes: ['id', 'name', 'email', 'password'],
+            where: {
+                email: req.body.email
+            }
+        });
+        if(user === null){
+            res.status(400).json({
+                mensagem: "Usuário ou senha inválida"
+            });
+        }
+        if(!(await bcrypt.compare(req.body.password, user.password))){
+            res.status(400).json({
+                mensagem: "Usuário ou senha inválida"
+            });
+        }
+        var token = jwt.sign({id: user.id}, SECRET_KEY, {
+            expiresIn: 3600
+        });
+        res.status(200).json({
+        //mensagem: "Login realizado com sucesso!",
+            "data": {token}
+        });
+    }        
+
 }
 
 export default new UserController();

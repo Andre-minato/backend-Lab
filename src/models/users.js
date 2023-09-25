@@ -1,4 +1,4 @@
-import { Sequelize } from "sequelize";
+import { BOOLEAN, Sequelize } from "sequelize";
 import db from "../db.js";
 
 const UserRepository = db.define("users", {
@@ -7,6 +7,9 @@ const UserRepository = db.define("users", {
     allowNull: false,
     primaryKey: true,
     autoIncrement: true,
+  },
+  role: {
+    type: Sequelize.STRING
   },
    name: {
     type: Sequelize.STRING,
