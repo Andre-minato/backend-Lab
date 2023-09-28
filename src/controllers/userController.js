@@ -1,7 +1,7 @@
 import UserRepository from "../models/users.js";
 import bcrypt from "bcrypt";
 import UserTypeRepository from "../models/user_types.js";
-import jwt from "jsonwebtoken"
+import jwt, { decode } from "jsonwebtoken"
 import { SECRET_KEY } from "../middlewares/auth.js";
 
 
@@ -25,7 +25,7 @@ class UserController{
         dados.user_type_id = Number(userType);
         try {
             const addUser = await UserRepository.create(dados);
-            res.status(200).json(addUser);
+            res.status(201).json(addUser);
         } catch (err){
             res.status(400).json({mensagem: "Não foi possivel cadastrar usuário"}, err);
         }
@@ -36,85 +36,142 @@ class UserController{
         try {
             const users = await UserRepository.findAll();
             if(users.length === 0){
-                res.json({mensagem: "Não tem usuário cadastrado"});
+                return res.json({mensagem: "Não tem usuário cadastrado"});
             } else {
-                res.status(200).json(users);
+                return res.status(200).json(users);
             }  
         } catch (err){
-            res.status(400).json({mensagem: "Não existe usuário"});
+            return res.status(400).json({mensagem: "Não existe usuário"});
         }
     }
 
     async findById(req, res){
         const {id} = req.params;
-        try {
-            const user = await UserRepository.findByPk(id);
-            if(user == null){
-                res.status(200).json({mensagem: "Usuário não encontrado ou pode estar desativado"});
-            } else {
-                res.json(user);
-            }
-        } catch (err) {
-            res.status(400).json({mensagem: "Usuário não encontrado!"});
+        const verifyUserId = await UserRepository.findByPk(Number(id))
+        if(!verifyUserId){
+            return res.status(400).json({mensagem: "Não existe usuário!"})
         }
-        
+        const authHeader = req.headers['authorization'];
+        const tokenId = await getUserIdLogado(authHeader);
+        const tokenRole = await getRole(authHeader)
+        if(tokenId === (Number(id)) || tokenRole === "admin"){
+            try {
+                const user = await UserRepository.findByPk(Number(id));
+                if(user == null){
+                    res.status(200).json({mensagem: "Usuário não encontrado ou pode estar desativado"});
+                    return;
+                } else {
+                    res.json(user);
+                    return;
+                }
+            } catch (err) {
+                res.status(400).json({mensagem: "Usuário não encontrado!"});
+                return;
+            }
+        } 
     }
 
     async update(req, res){
-        const dados = req.body;
-        const id = req.params;
-        try {
-            await UserRepository.update(dados, {where: id});
-            res.status(200).json({ mensagem: "Usuário editado com sucesso!"});
-        } catch (err) {
-            res.status(400).json({mensagem: "Usuário não encontrado!"});
+        const { id } = req.params;
+        const verifyUserId = await UserRepository.findByPk(Number(id))
+        if(!verifyUserId){
+            return res.status(400).json({mensagem: "Não existe usuário!"})
         }
+        const authHeader = req.headers['authorization'];
+        const tokenId = await getUserIdLogado(authHeader);
+        const tokenRole = await getRole(authHeader)
+        console.log(tokenId)
+        const dados = req.body;
+        if(tokenId === (Number(id)) || tokenRole === "admin"){
+            try {
+                await UserRepository.update(dados, {where: {id}});
+                return res.status(200).json({ mensagem: "Usuário editado com sucesso!"});
+            } catch (err) {
+                return res.status(400).json({mensagem: "Usuário não encontrado!"});
+            }
+        } 
+        return res.json({mensagem: "Não autorizado"})
     }
 
 
-    async deactivate(req, res){
+    async disable(req, res){
         const { id } = req.params; 
-        try{
-            await UserRepository.destroy({where: { id }});
-            res.status(200).json({mensagem: "Usuário desativado com sucesso com sucesso!"});
-        } catch (err) {
-            res.status(400).json({mensagem: "Usuário não pode ser excluido"});
+        const verifyUserId = await UserRepository.findByPk(Number(id))
+        if(!verifyUserId){
+            return res.status(400).json({mensagem: "Não existe usuário!"})
         }
-        
+        const authHeader = req.headers['authorization'];
+        const tokenId = await getUserIdLogado(authHeader);
+        const tokenRole = await getRole(authHeader)
+        const response = await UserRepository.findByPk(Number(id), {
+           where: {
+            is_disabled: null 
+           }
+        })
+        if(!response){
+            return res.status(400).json({mensagem: "Usuário já está desativado!"})
+        }
+        if(tokenId === (Number(id)) || tokenRole === "admin"){
+            try{
+                await UserRepository.destroy({where: { id }});
+                return res.status(200).json({mensagem: "Usuário desativado com sucesso com sucesso!"});
+            } catch (err) {
+                return res.status(400).json({mensagem: "Usuário não pode ser excluido"});
+            }    
+        } 
+        return res.status(401).json({mensagem: "Não autorizado"})   
     }
 
     async activate(req, res){
-        const id = req.params;
+        const {id} = req.params;
+        const verifyUserId = await UserRepository.findByPk(Number(id))
+        if(!verifyUserId){
+            return res.status(400).json({mensagem: "Não existe usuário!"})
+        }
+        const response = await UserRepository.findByPk((Number(id)), {
+            where: {
+             is_disabled: null 
+            }
+        })
+        if(response){
+            return res.status(400).json({mensagem: "Usuário já está ativado!"}) 
+        }
         try{
-            await UserRepository.restore({ where: id});
-            res.status(200).json({mensagem: "Usuário ativado com sucesso!"});
+            await UserRepository.restore({ where: {id}});
+            return res.status(200).json({mensagem: "Usuário ativado com sucesso!"});
         } catch (err) {
-            res.status(400).json({mensagem: "Não foi possível ativar usuário!"});
+            return res.status(400).json({mensagem: "Não foi possível ativar usuário!"});
         }
     }
 
     async login(req, res){
         const user = await UserRepository.findOne({
-            attributes: ['id', 'name', 'email', 'password'],
+            attributes: ['id', 'role', 'name', 'email', 'password'],
             where: {
                 email: req.body.email
             }
         });
         if(user === null){
-            res.status(400).json({
+            return res.status(400).json({
                 mensagem: "Usuário ou senha inválida"
             });
         }
         if(!(await bcrypt.compare(req.body.password, user.password))){
-            res.status(400).json({
+            return res.status(400).json({
                 mensagem: "Usuário ou senha inválida"
             });
         }
-        var token = jwt.sign({id: user.id}, SECRET_KEY, {
+        var token = jwt.sign(
+            {
+                id: user.id,
+                role: user.role
+            }, SECRET_KEY, {
             expiresIn: 3600
         });
+
+        console.log(user.id)
         res.status(200).json({
-        //mensagem: "Login realizado com sucesso!",
+        mensagem: "Login realizado com sucesso!",
             "data": {token}
         });
     }        
@@ -131,3 +188,26 @@ async function type(param) {
     return tipos;
 }
 
+
+async function getUserIdLogado(param){
+    const token = param.split(' ')[1];
+    const decoded = jwt.verify(token, SECRET_KEY);
+    return decoded.id;
+}
+
+async function getRole(param){
+    const token = param.split(' ')[1];
+    const decoded = jwt.verify(token, SECRET_KEY);
+    const role = decoded.role;
+    console.log(role)
+    return decoded.role;
+}
+
+async function verifyId(param){
+    const response = await UserRepository.findOne({
+        where: {
+            id: param
+        }
+    })
+    console.log(response)
+}
