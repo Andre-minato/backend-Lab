@@ -34,7 +34,7 @@ class UserController{
 
     async findAll(req, res){
         try {
-            const users = await UserRepository.findAll();
+            const users = await UserRepository.findAll({paranoid: false});
             if(users.length === 0){
                 return res.json({mensagem: "Não tem usuário cadastrado"});
             } else {
@@ -47,8 +47,8 @@ class UserController{
 
     async findById(req, res){
         const {id} = req.params;
-        const verifyUserId = await UserRepository.findByPk(Number(id))
-        if(!verifyUserId){
+        const verifyUserId = await getUserId(id)
+        if(verifyUserId === false){
             return res.status(400).json({mensagem: "Não existe usuário!"})
         }
         const authHeader = req.headers['authorization'];
@@ -56,7 +56,7 @@ class UserController{
         const tokenRole = await getRole(authHeader)
         if(tokenId === (Number(id)) || tokenRole === "admin"){
             try {
-                const user = await UserRepository.findByPk(Number(id));
+                const user = await UserRepository.findByPk(id);
                 if(user == null){
                     res.status(200).json({mensagem: "Usuário não encontrado ou pode estar desativado"});
                     return;
@@ -73,7 +73,7 @@ class UserController{
 
     async update(req, res){
         const { id } = req.params;
-        const verifyUserId = await UserRepository.findByPk(Number(id))
+        const verifyUserId = await UserRepository.findByPk(id)
         if(!verifyUserId){
             return res.status(400).json({mensagem: "Não existe usuário!"})
         }
@@ -84,7 +84,7 @@ class UserController{
         const dados = req.body;
         if(tokenId === (Number(id)) || tokenRole === "admin"){
             try {
-                await UserRepository.update(dados, {where: {id}});
+                await UserRepository.update(dados, {where: { id }});
                 return res.status(200).json({ mensagem: "Usuário editado com sucesso!"});
             } catch (err) {
                 return res.status(400).json({mensagem: "Usuário não encontrado!"});
@@ -96,14 +96,14 @@ class UserController{
 
     async disable(req, res){
         const { id } = req.params; 
-        const verifyUserId = await UserRepository.findByPk(Number(id))
-        if(!verifyUserId){
+        const verifyUserId = await getUserId(id)
+        if(verifyUserId === false){
             return res.status(400).json({mensagem: "Não existe usuário!"})
         }
         const authHeader = req.headers['authorization'];
         const tokenId = await getUserIdLogado(authHeader);
         const tokenRole = await getRole(authHeader)
-        const response = await UserRepository.findByPk(Number(id), {
+        const response = await UserRepository.findByPk(id, {
            where: {
             is_disabled: null 
            }
@@ -124,11 +124,11 @@ class UserController{
 
     async activate(req, res){
         const {id} = req.params;
-        const verifyUserId = await UserRepository.findByPk(Number(id))
-        if(!verifyUserId){
+        const verifyUserId = await getUserId(id)
+        if(verifyUserId === false){
             return res.status(400).json({mensagem: "Não existe usuário!"})
         }
-        const response = await UserRepository.findByPk((Number(id)), {
+        const response = await UserRepository.findByPk(id, {
             where: {
              is_disabled: null 
             }
@@ -203,11 +203,10 @@ async function getRole(param){
     return decoded.role;
 }
 
-async function verifyId(param){
-    const response = await UserRepository.findOne({
-        where: {
-            id: param
-        }
-    })
-    console.log(response)
+async function getUserId(param){
+    const response = await UserRepository.findByPk(param, {paranoid: false})
+    if(response === null){
+        return false
+    }
+    return true
 }

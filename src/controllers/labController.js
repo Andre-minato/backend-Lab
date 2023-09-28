@@ -68,8 +68,8 @@ class LabController{
     async update(req, res){
         const dados = req.body;
         const { id } = req.params;
-        const verifyId = await getLabId(id)
-        if(verifyId === false){
+        const response = await LabRepository.findByPk(id)
+        if(response === null){
             return res.status(400).json({mensagem: "Não existe cadastro"})
         }
         try {
