@@ -1,8 +1,9 @@
-import express from "express";
+import express, { Router } from "express";
 import UserController from "./src/controllers/userController.js";
 import UserTypeController from "./src/controllers/user_typeController.js";
 import LabController from "./src/controllers/labController.js";
 import { validateToken, validateTokenAndRole } from "./src/middlewares/auth.js";
+import book_labController from "./src/controllers/book_labController.js";
 const routes = express.Router();
 
 routes.post("/users/login", UserController.login);//ok
@@ -23,5 +24,8 @@ routes.get("/lab/:id", validateTokenAndRole(["admin"]), LabController.findById);
 routes.delete("/lab/disable/:id", validateTokenAndRole(["admin"]), LabController.disable);// admin ok
 routes.put("/lab/activate/:id", validateTokenAndRole(["admin"]), LabController.activate);// admin ok
 routes.put("/lab/:id", validateTokenAndRole(["admin"]), LabController.update);// admin ok
+
+routes.get('/reserva', validateTokenAndRole(["admin"]), book_labController.findAll)
+routes.post('/reserva/:user_id/reserva', validateToken, book_labController.create)
 
 export default routes;
