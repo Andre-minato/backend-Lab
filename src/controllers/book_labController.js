@@ -24,6 +24,7 @@ class BookLabController{
         const dados = {...req.body, user_id: Number(user_id)}
         const user_type = await funcao.tipoUsuario(user_id)
         const userVerifyLogin = funcao.getUserIdLogado(authHeader)
+        let boleto = null;
         const labIsReserved = await funcao.labIsReserved(lab_id)
 
         if(userVerifyLogin != user_id){
@@ -34,17 +35,19 @@ class BookLabController{
         }
         if(user_type === '1'){
             const cod_barras = funcao.gerarCodigoBoleto();
-            const boleto = await funcao.pagarBoleto(cod_barras, user_id)
+            boleto = await funcao.pagarBoleto(cod_barras, user_id)
             console.log(boleto)
             if(boleto.status !== 'approved'){
                 return res.status(401).json({menssagem: "Verificar o pagamento do boleto"})
             }
         }
         const existLab = await funcao.verifyLab(dados.lab_id)
-        if(existLab === false){
+        if(!existLab ){
             return res.status(400).json({mensagem: "Lab não está cadastrado"})
         }
-
+        if(boleto != null){
+            dados.status = boleto.status
+        }
         try {
             const reserva_lab = await BookLabRepository.create(dados)
             console.log(reserva_lab.createdAt)

@@ -14,8 +14,8 @@ export const BookLabRepository = db.define("book_labs", {
         type: Sequelize.STRING,
         allowNull: false
       },
-      reserva: {
-        type: Sequelize.DATE
+      status: {
+        type: Sequelize.STRING
       },
 })
 BookLabRepository.belongsTo(users, {
