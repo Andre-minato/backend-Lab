@@ -1,4 +1,6 @@
 import LabRepository from "../models/labs.js";
+import { funcao } from "../funcoes/funcao.js";
+
 
 class LabController{
 
@@ -15,8 +17,19 @@ class LabController{
 
     async findAll(req, res){
         try {
-            const users = await LabRepository.findAll({paranoid: false});
-            return res.status(200).json(users);
+            const labs = await LabRepository.findAll({paranoid: false}); //{paranoid: false}
+            for (var item in labs){
+                console.log(labs[item].id)
+                const verifyStatusLab = await funcao.labIsReserved(labs[item].id)
+                if (verifyStatusLab == true){
+                    labs[item].occupied = 1 
+                }
+                if (verifyStatusLab == false){
+                    labs[item].occupied = 0
+                }
+            }
+            
+            return res.status(200).json(labs);
         } catch (err){
             return res.status(400).json({mensagem: "Não existe lab cadastrado"});
         }

@@ -3,10 +3,9 @@ import bcrypt from "bcrypt";
 import UserTypeRepository from "../models/user_types.js";
 import jwt, { decode } from "jsonwebtoken"
 import { SECRET_KEY } from "../middlewares/auth.js";
-
+import { funcao } from "../funcoes/funcao.js";
 
 class UserController{
-
     async create(req, res){
         const dados = req.body;
         const verifyUsers = await UserRepository.findAll();
@@ -145,8 +144,9 @@ class UserController{
     }
 
     async login(req, res){
+        let cod_barras = null;
         const user = await UserRepository.findOne({
-            attributes: ['id', 'role', 'name', 'email', 'password'],
+            attributes: ['id', 'role', 'name', 'email', 'user_type_id', 'password'],
             where: {
                 email: req.body.email
             }
@@ -171,7 +171,13 @@ class UserController{
 
         console.log(user.id)
         res.status(200).json({
-        mensagem: "Login realizado com sucesso!",
+            "cod": cod_barras,
+            mensagem: "Login realizado com sucesso!",
+            "id": user.id,
+            "role": user.role,
+            "name": user.name,
+            "email": user.email,
+            "user_type_id": user.user_type_id,
             "data": {token}
         });
     }        

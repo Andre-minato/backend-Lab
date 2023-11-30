@@ -24,6 +24,7 @@ async function pagarBoleto(cod_barras, user_id){
     try {
         const response = await fetch("https://api-go-wash-efc9c9582687.herokuapp.com/api/pay-boleto", requestOptions)
         const result = await response.json();
+        console.log(result.data)
         return result.data
     } catch (error) {
         (error => console.log('error', error));
@@ -62,7 +63,9 @@ async function labIsReserved(lab_id){
         where:{lab_id},
         order: [['id', 'DESC']]
     })
-
+    if(lab == 0){
+        return false
+    }
     const reserva = lab[0].createdAt
     console.log(reserva)
     const dataAtual = new Date()
@@ -71,7 +74,7 @@ async function labIsReserved(lab_id){
     var milissegundos = dataAtual - reserva
     console.log(milissegundos)
     var tempoTotal = (milissegundos/1000)/60
-    if(tempoTotal <= 1){
+    if(tempoTotal <= 5){
         return true
     }
 

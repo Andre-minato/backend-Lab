@@ -18,14 +18,16 @@ routes.put("/users/activate/:id", validateTokenAndRole(["admin"]), UserControlle
 routes.post("/type", UserTypeController.create);
 routes.get("/type", UserTypeController.findAll);
 
-routes.get("/lab", validateTokenAndRole(["admin"]), LabController.findAll);// admin ok
+routes.get("/lab", validateToken, LabController.findAll);
 routes.post("/lab", LabController.create);// admin ok
-routes.get("/lab/:id", validateTokenAndRole(["admin"]), LabController.findById);// admin ok
+routes.get("/lab/:id", validateToken, LabController.findById); 
 routes.delete("/lab/disable/:id", validateTokenAndRole(["admin"]), LabController.disable);// admin ok
 routes.put("/lab/activate/:id", validateTokenAndRole(["admin"]), LabController.activate);// admin ok
 routes.put("/lab/:id", validateTokenAndRole(["admin"]), LabController.update);// admin ok
 
 routes.get('/reserva', validateTokenAndRole(["admin"]), book_labController.findAll)
 routes.post('/reserva/:user_id/reserva', validateToken, book_labController.create)
+routes.post('/boleto/:user_id', validateToken, book_labController.preReservation)
+routes.get('/codigo_barras', book_labController.codigoBoleto)
 
 export default routes;
