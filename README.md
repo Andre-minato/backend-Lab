@@ -12,5 +12,5 @@ Instalar dependências para rodar projeto:
 `npm install --save jsonwebtoken`
 
 ### Banco de dados   
-* Tabelas a serem criadas:  https://app.diagrams.net/?mode=google&gfw=1#G1BSPYzj7sFB-aGxeQBkKvbAd36FreHeNI
-
+* Tabelas a serem criadas:  
+|![](src/gif/tabelas.png)
